@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice OCR - Demo</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #edf2f7; color: #1a202c; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem; }
+        .container { max-width: 800px; width: 100%; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 2rem; }
+        h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
+        .subtitle { color: #718096; font-size: 0.875rem; margin-bottom: 1.5rem; }
+        .form-group { margin-bottom: 1.25rem; }
+        label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.4rem; color: #2d3748; }
+        input[type="text"], input[type="file"] { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; }
+        input[type="text"]:focus { outline: none; border-color: #4299e1; box-shadow: 0 0 0 3px rgba(66,153,225,0.15); }
+        input[type="file"] { padding: 0.5rem 0.75rem; }
+        .file-info { font-size: 0.8rem; color: #718096; margin-top: 0.3rem; }
+        button { width: 100%; padding: 0.75rem; background: #4299e1; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #3182ce; }
+        button:disabled { background: #a0aec0; cursor: not-allowed; }
+        .spinner { display: none; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; margin: 0 auto; }
+        button.loading .spinner { display: inline-block; }
+        button.loading .btn-text { display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .result { margin-top: 1.5rem; }
+        .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .result-header h2 { font-size: 1rem; font-weight: 600; }
+        .status-badge { font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 600; }
+        .status-badge.success { background: #c6f6d5; color: #22543d; }
+        .status-badge.error { background: #fed7d7; color: #9b2c2c; }
+        .status-badge.loading { background: #fefcbf; color: #744210; }
+        pre { background: #1a202c; color: #a0aec0; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; max-height: 500px; overflow-y: auto; }
+        pre .key { color: #63b3ed; }
+        pre .string { color: #9ae6b4; }
+        pre .number { color: #f6ad55; }
+        pre .boolean { color: #fc8181; }
+        pre .null { color: #d53f8c; }
+        .error-box { background: #fff5f5; border: 1px solid #feb2b2; border-radius: 8px; padding: 1rem; color: #9b2c2c; }
+        .info-box { background: #ebf8ff; border: 1px solid #90cdf4; border-radius: 8px; padding: 1rem; font-size: 0.85rem; color: #2b6cb0; margin-bottom: 1.5rem; }
+        .info-box code { background: rgba(66,153,225,0.1); padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.8rem; }
+        hr { border: none; border-top: 1px solid #e2e8f0; margin: 1.5rem 0; }
+        .endpoint-info { font-size: 0.8rem; color: #718096; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Invoice OCR Processor</h1>
+        <p class="subtitle">Demo — Simulates the .NET App calling the OCR Microservice</p>
+
+        <div class="info-box">
+            <strong>How this works:</strong> Select a file and enter an API key.
+            This page calls <code>POST /api/v1/process-invoice</code> directly,
+            just like the .NET application would with <code>HttpClient</code> or <code>RestSharp</code>.
+        </div>
+
+        <div class="form-group">
+            <label for="apiKey">API Key</label>
+            <input type="text" id="apiKey" placeholder="e.g. ocr-secret-key-123" value="demo-key">
+        </div>
+
+        <div class="form-group">
+            <label for="fileInput">Invoice Document</label>
+            <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif">
+            <div class="file-info" id="fileInfo">Accepted: PDF, JPG, PNG, TIFF</div>
+        </div>
+
+        <button id="submitBtn" onclick="processInvoice()">
+            <span class="btn-text">Process Invoice</span>
+            <span class="spinner"></span>
+        </button>
+
+        <hr>
+
+        <div class="result" id="resultSection" style="display:none;">
+            <div class="result-header">
+                <h2>Response</h2>
+                <span class="status-badge" id="statusBadge">Success</span>
+            </div>
+            <pre id="responseJson"></pre>
+        </div>
+
+        <div id="errorSection" style="display:none;">
+            <div class="error-box" id="errorMessage"></div>
+        </div>
+
+        <hr>
+        <div class="endpoint-info">
+            Endpoint: <code>/api/v1/process-invoice</code> &middot; Auth: <code>X-API-Key</code> header
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        document.getElementById('fileInput').addEventListener('change', function() {
+            const info = document.getElementById('fileInfo');
+            if (this.files.length > 0) {
+                info.textContent = `${this.files[0].name} (${(this.files[0].size / 1024).toFixed(1)} KB)`;
+            } else {
+                info.textContent = 'Accepted: PDF, JPG, PNG, TIFF';
+            }
+        });
+
+        async function processInvoice() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const fileInput = document.getElementById('fileInput');
+            const btn = document.getElementById('submitBtn');
+            const resultSection = document.getElementById('resultSection');
+            const errorSection = document.getElementById('errorSection');
+            const responseJson = document.getElementById('responseJson');
+            const statusBadge = document.getElementById('statusBadge');
+            const errorMessage = document.getElementById('errorMessage');
+
+            resultSection.style.display = 'none';
+            errorSection.style.display = 'none';
+
+            if (!apiKey) {
+                showError('API Key is required');
+                return;
+            }
+
+            if (!fileInput.files.length) {
+                showError('Please select a file');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.classList.add('loading');
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/process-invoice`, {
+                    method: 'POST',
+                    headers: { 'X-API-Key': apiKey },
+                    body: formData
+                });
+
+                const data = await response.json();
+                resultSection.style.display = 'block';
+
+                if (response.ok) {
+                    statusBadge.textContent = 'Success';
+                    statusBadge.className = 'status-badge success';
+                } else {
+                    statusBadge.textContent = `Error ${response.status}`;
+                    statusBadge.className = 'status-badge error';
+                }
+
+                responseJson.textContent = JSON.stringify(data, null, 2);
+                responseJson.innerHTML = syntaxHighlight(responseJson.textContent);
+
+            } catch (err) {
+                showError(`Network error: ${err.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('loading');
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('errorSection').style.display = 'block';
+            document.getElementById('errorMessage').textContent = msg;
+        }
+
+        function syntaxHighlight(json) {
+            return json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"([^"]+)":/g, '<span class="key">"$1"</span>:')
+                .replace(/: "([^"]+)"/g, ': <span class="string">"$1"</span>')
+                .replace(/: (\d+\.?\d*)/g, ': <span class="number">$1</span>')
+                .replace(/: (true|false)/g, ': <span class="boolean">$1</span>')
+                .replace(/: (null)/g, ': <span class="null">$1</span>');
+        }
+    </script>
+</body>
+</html>
