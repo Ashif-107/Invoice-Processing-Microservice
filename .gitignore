@@ -1,2 +1,22 @@
-/.env.example
-/.venv
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+
+# Virtual environment
+.venv/
+
+# Environment variables (actual secrets, not the template)
+.env
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
