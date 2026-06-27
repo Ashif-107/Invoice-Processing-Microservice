@@ -5,10 +5,13 @@ from fastapi.responses import HTMLResponse
 
 from app.core.config import settings
 from app.middleware.auth import APIKeyMiddleware
-from app.models.response import InvoiceResponse, InvoiceData, HeaderInfo, VendorInfo, ShippingInfo, TaxInfo, LineItem
+from app.models.response import InvoiceResponse
+from app.services.ocr import OCRService
 
 app = FastAPI(title=settings.app_name, version="1.0.0")
 app.add_middleware(APIKeyMiddleware)
+
+ocr_service = OCRService()
 
 
 @app.get("/health")
@@ -18,56 +21,32 @@ def health():
 
 @app.get("/demo", response_class=HTMLResponse)
 def demo():
-    html_path = Path(__file__).resolve().parent.parent / "demo" / "index.html"  
+    html_path = Path(__file__).resolve().parent.parent / "demo" / "index.html"
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 
 @app.post("/api/v1/process-invoice", response_model=InvoiceResponse)
 async def process_invoice(file: UploadFile = File(...)):
+    file_bytes = await file.read()
+    raw_text = ocr_service.extract_text(file_bytes, file.filename or "file")
+
+    print("===== OCR START =====")
+    print(raw_text)
+    print("===== OCR END =====")
     return InvoiceResponse(
         status="success",
-        data=InvoiceData(
-            header=HeaderInfo(
-                company_name="Acme Corp",
-                invoice_number="INV-001",
-                gst_number="29ABCDE1234F1Z5",
-                invoice_date="2025-06-01",
-                vendor=VendorInfo(
-                    name="Vendor Ltd",
-                    address="123 Business Park, Mumbai",
-                    contact="info@vendor.com",
-                ),
-                shipping=ShippingInfo(
-                    name="ShipCo Logistics",
-                    address="456 Port Road, Chennai",
-                    vessel="MV Ocean Explorer",
-                    consignee="John Doe",
-                ),
-                total_amount=15000.00,
-                currency="INR",
-                tax_info=TaxInfo(
-                    tax_type="GST",
-                    tax_rate=18.0,
-                    tax_amount=2700.00,
-                ),
-            ),
-            line_items=[
-                LineItem(
-                    description="Widget A - Premium Quality",
-                    quantity=10.0,
-                    unit_price=500.00,
-                    charges=200.00,
-                    tax_component=900.00,
-                    line_total=5200.00,
-                ),
-                LineItem(
-                    description="Widget B - Standard",
-                    quantity=20.0,
-                    unit_price=300.00,
-                    charges=150.00,
-                    tax_component=1080.00,
-                    line_total=7230.00,
-                ),
-            ],
-        ),
+        data={
+            "header": {
+                "company_name": raw_text[:100],
+                "invoice_number": "",
+                "gst_number": "",
+                "invoice_date": "",
+                "vendor": {"name": "", "address": "", "contact": ""},
+                "shipping": {"name": "", "address": "", "vessel": "", "consignee": ""},
+                "total_amount": 0.0,
+                "currency": "",
+                "tax_info": {"tax_type": "", "tax_rate": 0.0, "tax_amount": 0.0},
+            },
+            "line_items": [],
+        },
     )
