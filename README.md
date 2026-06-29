@@ -1,4 +1,3 @@
-# Invoice OCR Microservice
 
 An AI-powered document intelligence microservice that accepts invoice documents (PDF, JPG, PNG), extracts text via OCR, and returns structured JSON. Designed to be consumed by the main .NET application through REST APIs.
 
