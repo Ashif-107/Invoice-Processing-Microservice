@@ -1,57 +1,586 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice OCR - Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&amp;display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #edf2f7; color: #1a202c; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem; }
-        .container { max-width: 800px; width: 100%; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 2rem; }
-        h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
-        .subtitle { color: #718096; font-size: 0.875rem; margin-bottom: 1.5rem; }
-        .form-group { margin-bottom: 1.25rem; }
-        label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.4rem; color: #2d3748; }
-        input[type="text"], input[type="file"] { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; }
-        input[type="text"]:focus { outline: none; border-color: #4299e1; box-shadow: 0 0 0 3px rgba(66,153,225,0.15); }
-        input[type="file"] { padding: 0.5rem 0.75rem; }
-        .file-info { font-size: 0.8rem; color: #718096; margin-top: 0.3rem; }
-        button { width: 100%; padding: 0.75rem; background: #4299e1; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
-        button:hover { background: #3182ce; }
-        button:disabled { background: #a0aec0; cursor: not-allowed; }
-        .spinner { display: none; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; margin: 0 auto; }
-        button.loading .spinner { display: inline-block; }
-        button.loading .btn-text { display: none; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .result { margin-top: 1.5rem; }
-        .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-        .result-header h2 { font-size: 1rem; font-weight: 600; }
-        .status-badge { font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 600; }
-        .status-badge.success { background: #c6f6d5; color: #22543d; }
-        .status-badge.error { background: #fed7d7; color: #9b2c2c; }
-        .status-badge.loading { background: #fefcbf; color: #744210; }
-        pre { background: #1a202c; color: #a0aec0; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; max-height: 500px; overflow-y: auto; }
-        pre .key { color: #63b3ed; }
-        pre .string { color: #9ae6b4; }
-        pre .number { color: #f6ad55; }
-        pre .boolean { color: #fc8181; }
-        pre .null { color: #d53f8c; }
-        .error-box { background: #fff5f5; border: 1px solid #feb2b2; border-radius: 8px; padding: 1rem; color: #9b2c2c; }
-        .info-box { background: #ebf8ff; border: 1px solid #90cdf4; border-radius: 8px; padding: 1rem; font-size: 0.85rem; color: #2b6cb0; margin-bottom: 1.5rem; }
-        .info-box code { background: rgba(66,153,225,0.1); padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.8rem; }
-        hr { border: none; border-top: 1px solid #e2e8f0; margin: 1.5rem 0; }
-        .endpoint-info { font-size: 0.8rem; color: #718096; text-align: center; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e2937 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 860px;
+            width: 100%;
+            background: rgba(15, 23, 42, 0.88);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45),
+                inset 0 2px 0 rgba(255, 255, 255, 0.08),
+                inset 0 -2px 0 rgba(0, 0, 0, 0.6);
+            padding: 2.5rem;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.12) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 1;
+            animation: gloss 12s ease-in-out infinite;
+        }
+
+        @keyframes gloss {
+
+            0%,
+            100% {
+                transform: translate(8%, 12%);
+            }
+
+            50% {
+                transform: translate(-8%, -12%);
+            }
+        }
+
+        h1 {
+            font-size: 2.1rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            background: linear-gradient(90deg, #e0f2fe, #bae6fd);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.4rem;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            font-weight: 400;
+            margin-bottom: 1.75rem;
+        }
+
+        .workflow {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 14px;
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .workflow-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #bae6fd;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 22px;
+            left: 35px;
+            right: 35px;
+            height: 3px;
+            background: linear-gradient(to right, #60a5fa, #3b82f6);
+            z-index: 1;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 2;
+            width: 20%;
+        }
+
+        .step-circle {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            margin-bottom: 0.6rem;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .step-label {
+            font-size: 0.8rem;
+            text-align: center;
+            line-height: 1.3;
+            color: #cbd5e1;
+            max-width: 110px;
+        }
+
+        .drop-zone {
+            border: 3px dashed #64748b;
+            border-radius: 16px;
+            padding: 3rem 1.5rem;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(30, 41, 59, 0.4);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .drop-zone.dragover {
+            border-color: #60a5fa;
+            background: rgba(59, 130, 246, 0.12);
+            box-shadow: 0 0 0 6px rgba(96, 165, 250, 0.15);
+        }
+
+        .drop-zone-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            opacity: 0.7;
+        }
+
+        .drop-zone p {
+            font-size: 1.05rem;
+            color: #cbd5e1;
+            margin-bottom: 0.5rem;
+        }
+
+        .drop-zone small {
+            color: #94a3b8;
+            display: block;
+        }
+
+        .browse-btn {
+            margin-top: 1.25rem;
+            background: #1e2937;
+            color: #bae6fd;
+            border: 1px solid #475569;
+            padding: 0.65rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .browse-btn:hover {
+            background: #334155;
+            border-color: #60a5fa;
+        }
+
+        .files-list {
+            margin-top: 1.5rem;
+            display: none;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(30, 41, 59, 0.6);
+            padding: 0.85rem;
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            border: 1px solid rgba(148, 163, 184, 0.15);
+        }
+
+        .file-thumb {
+            width: 52px;
+            height: 52px;
+            background: #1e2937;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            overflow: hidden;
+        }
+
+        .file-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .file-info-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-weight: 500;
+            font-size: 0.95rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-meta {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .progress-container {
+            height: 4px;
+            background: #334155;
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(to right, #60a5fa, #3b82f6);
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #f87171;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .delete-btn:hover {
+            background: rgba(248, 113, 113, 0.15);
+        }
+
+        .form-group {
+            margin-bottom: 1.75rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: #cbd5e1;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 12px;
+            font-size: 1rem;
+            background: rgba(30, 41, 59, 0.7);
+            color: #e2e8f0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.15);
+        }
+
+        button#main-btn {
+            width: 100%;
+            padding: 0.95rem;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.45),
+                inset 0 1px 0 rgba(255, 255, 255, 0.35);
+            position: relative;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+
+        button#main-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .spinner {
+            display: none;
+            width: 22px;
+            height: 22px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin: 0 auto;
+        }
+
+        button.loading .spinner {
+            display: inline-block;
+        }
+
+        button.loading .btn-text {
+            display: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .result {
+            margin-top: 2rem;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .result-header h2 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #e0f2fe;
+        }
+
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .status-badge.success {
+            background: linear-gradient(90deg, #4ade80, #22c55e);
+            color: #052e16;
+        }
+
+        .status-badge.error {
+            background: linear-gradient(90deg, #f87171, #ef4444);
+            color: #fff;
+        }
+
+        pre {
+            background: #0f172a;
+            color: #cbd5e1;
+            padding: 1.75rem;
+            border-radius: 14px;
+            overflow-x: auto;
+            font-size: 0.87rem;
+            line-height: 1.6;
+            max-height: 560px;
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.4);
+            white-space: pre-wrap;
+        }
+
+        pre .key {
+            color: #60a5fa;
+            font-weight: 500;
+        }
+
+        pre .string {
+            color: #86efac;
+        }
+
+        pre .number {
+            color: #fbbf24;
+        }
+
+        pre .boolean {
+            color: #f472b6;
+        }
+
+        pre .null {
+            color: #e879f9;
+        }
+
+        .error-box {
+            background: rgba(153, 27, 27, 0.2);
+            border: 1px solid #f87171;
+            border-radius: 12px;
+            padding: 1.25rem;
+            color: #fda4af;
+            margin-top: 1rem;
+        }
+
+        .info-box {
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 14px;
+            padding: 1.25rem;
+            font-size: 0.9rem;
+            color: #bae6fd;
+            margin-bottom: 1.5rem;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid rgba(148, 163, 184, 0.15);
+            margin: 2rem 0;
+        }
+
+        .endpoint-info {
+            font-size: 0.8rem;
+            color: #64748b;
+            text-align: center;
+        }
+
+        .constraints {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            text-align: center;
+            margin-top: 0.75rem;
+        }
+
+        /* ==================== SUBMIT BUTTON STYLES ==================== */
+        #submitBtn {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: #ffffff;
+            border: none;
+            border-radius: 14px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.5),
+                inset 0 2px 0 rgba(255, 255, 255, 0.3),
+                inset 0 -3px 0 rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            margin-top: 1.25rem;
+        }
+
+        /* Hover effect */
+        #submitBtn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px -8px rgba(59, 130, 246, 0.6);
+            background: linear-gradient(135deg, #60a5fa, #2563eb);
+        }
+
+        /* Active / Pressed state */
+        #submitBtn:active {
+            transform: translateY(1px);
+            box-shadow: 0 4px 12px -4px rgba(59, 130, 246, 0.5);
+        }
+
+        /* Loading state */
+        #submitBtn.loading {
+            background: #475569;
+            cursor: not-allowed;
+        }
+
+        #submitBtn.loading:hover {
+            transform: none;
+        }
+
+        /* Glossy shine effect */
+        #submitBtn::before {
+            content: '';
+            position: absolute;
+            top: -60%;
+            left: -150%;
+            width: 60%;
+            height: 300%;
+            background: linear-gradient(120deg,
+                    transparent,
+                    rgba(255, 255, 255, 0.65),
+                    transparent);
+            transform: skewX(-25deg);
+            transition: 0.7s;
+        }
+
+        #submitBtn:hover::before {
+            left: 200%;
+        }
+
+        /* Spinner */
+        #submitBtn .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3.5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            animation: spin 0.75s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>Invoice OCR Processor</h1>
         <p class="subtitle">Demo — Simulates the .NET App calling the OCR Microservice</p>
 
+        <div class="workflow">
+            <div class="workflow-title">
+                <span>🔄</span> How It Works
+            </div>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-circle">1</div>
+                    <div class="step-label">Upload Invoice</div>
+                </div>
+                <div class="step">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">API Key Auth</div>
+                </div>
+                <div class="step">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">POST /process-invoice</div>
+                </div>
+                <div class="step">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">OCR Processing</div>
+                </div>
+                <div class="step">
+                    <div class="step-circle">5</div>
+                    <div class="step-label">Structured JSON</div>
+                </div>
+            </div>
+        </div>
+
         <div class="info-box">
-            <strong>How this works:</strong> Select a file and enter an API key.
-            This page calls <code>POST /api/v1/process-invoice</code> directly,
-            just like the .NET application would with <code>HttpClient</code> or <code>RestSharp</code>.
+            This frontend directly calls the backend endpoint using the same flow as the .NET client.
         </div>
 
         <div class="form-group">
@@ -59,14 +588,21 @@
             <input type="text" id="apiKey" placeholder="e.g. ocr-secret-key-123" value="demo-key">
         </div>
 
-        <div class="form-group">
-            <label for="fileInput">Invoice Document</label>
-            <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif">
-            <div class="file-info" id="fileInfo">Accepted: PDF, JPG, PNG, TIFF</div>
+        <div id="dropZone" class="drop-zone">
+            <div class="drop-zone-icon">📄</div>
+            <p><strong>Drop your invoice here</strong></p>
+            <p>or</p>
+            <button type="button" class="browse-btn" id="browseBtn">Browse Files</button>
+            <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.tiff" multiple style="display:none;">
+            <div class="constraints">
+                Max 5 files • 10MB each • PNG, JPG, PDF, TIFF
+            </div>
         </div>
 
+        <div id="filesList" class="files-list"></div>
+
         <button id="submitBtn" onclick="processInvoice()">
-            <span class="btn-text">Process Invoice</span>
+            <span class="btn-text">Process Invoice(s)</span>
             <span class="spinner"></span>
         </button>
 
@@ -86,31 +622,103 @@
 
         <hr>
         <div class="endpoint-info">
-            Endpoint: <code>/api/v1/process-invoice</code> &middot; Auth: <code>X-API-Key</code> header
+            Endpoint: <code>POST /api/v1/process-invoice</code> &middot; Header: <code>X-API-Key</code>
         </div>
     </div>
 
     <script>
-        const API_BASE = window.location.origin;
+        let API_BASE = window.location.origin;
+        if (API_BASE.startsWith('file://') || !API_BASE.includes('8080')) {
+            API_BASE = 'http://127.0.0.1:8080';
+        }
 
-        document.getElementById('fileInput').addEventListener('change', function() {
-            const info = document.getElementById('fileInfo');
-            if (this.files.length > 0) {
-                info.textContent = `${this.files[0].name} (${(this.files[0].size / 1024).toFixed(1)} KB)`;
-            } else {
-                info.textContent = 'Accepted: PDF, JPG, PNG, TIFF';
-            }
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const browseBtn = document.getElementById('browseBtn');
+        const filesListEl = document.getElementById('filesList');
+        let uploadedFiles = [];
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
         });
+
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        browseBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+        function handleFiles(files) {
+            const maxFiles = 5;
+            const maxSize = 10 * 1024 * 1024;
+            const allowedTypes = ['image/png', 'image/jpeg', 'application/pdf', 'image/tiff', 'image/tif'];
+
+            Array.from(files).forEach(file => {
+                if (uploadedFiles.length >= maxFiles) return;
+                if (file.size > maxSize) {
+                    showError(`${file.name} exceeds 10MB limit.`);
+                    return;
+                }
+                if (!allowedTypes.some(type => file.type === type ||
+                    (type === 'image/tiff' && file.name.toLowerCase().endsWith('.tif')))) {
+                    showError(`${file.name} is not a supported format.`);
+                    return;
+                }
+                uploadedFiles.push(file);
+            });
+
+            renderFiles();
+        }
+
+        function renderFiles() {
+            filesListEl.style.display = uploadedFiles.length ? 'block' : 'none';
+            filesListEl.innerHTML = '';
+
+            uploadedFiles.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.innerHTML = `
+                    <div class="file-thumb">
+                        ${file.type.includes('pdf') ? '📕' : `<img src="" alt="preview" id="thumb-${index}">`}
+                    </div>
+                    <div class="file-info-details">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-meta">${(file.size / (1024 * 1024)).toFixed(2)} MB</div>
+                        <div class="progress-container"><div class="progress-bar" id="prog-${index}"></div></div>
+                    </div>
+                    <button class="delete-btn" onclick="removeFile(${index})">🗑</button>
+                `;
+                filesListEl.appendChild(item);
+
+                if (!file.type.includes('pdf')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = document.getElementById(`thumb-${index}`);
+                        if (img) img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        window.removeFile = function (index) {
+            uploadedFiles.splice(index, 1);
+            renderFiles();
+        };
 
         async function processInvoice() {
             const apiKey = document.getElementById('apiKey').value.trim();
-            const fileInput = document.getElementById('fileInput');
             const btn = document.getElementById('submitBtn');
             const resultSection = document.getElementById('resultSection');
             const errorSection = document.getElementById('errorSection');
             const responseJson = document.getElementById('responseJson');
             const statusBadge = document.getElementById('statusBadge');
-            const errorMessage = document.getElementById('errorMessage');
 
             resultSection.style.display = 'none';
             errorSection.style.display = 'none';
@@ -119,41 +727,59 @@
                 showError('API Key is required');
                 return;
             }
-
-            if (!fileInput.files.length) {
-                showError('Please select a file');
+            if (uploadedFiles.length === 0) {
+                showError('Please select at least one file');
                 return;
             }
 
             btn.disabled = true;
             btn.classList.add('loading');
 
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-
             try {
-                const response = await fetch(`${API_BASE}/api/v1/process-invoice`, {
-                    method: 'POST',
-                    headers: { 'X-API-Key': apiKey },
-                    body: formData
-                });
+                const results = [];
 
-                const data = await response.json();
+                for (let i = 0; i < uploadedFiles.length; i++) {
+                    const formData = new FormData();
+                    formData.append('file', uploadedFiles[i]);
+
+                    const response = await fetch(`${API_BASE}/api/v1/process-invoice`, {
+                        method: 'POST',
+                        headers: { 'X-API-Key': apiKey },
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    results.push({
+                        filename: uploadedFiles[i].name,
+                        status: response.ok ? 'success' : 'error',
+                        data: data
+                    });
+
+                    // Update progress
+                    const prog = document.getElementById(`prog-${i}`);
+                    if (prog) prog.style.width = '100%';
+                }
+
                 resultSection.style.display = 'block';
 
-                if (response.ok) {
+                if (results.every(r => r.status === 'success')) {
                     statusBadge.textContent = 'Success';
                     statusBadge.className = 'status-badge success';
                 } else {
-                    statusBadge.textContent = `Error ${response.status}`;
+                    statusBadge.textContent = 'Partial Success';
                     statusBadge.className = 'status-badge error';
                 }
 
-                responseJson.textContent = JSON.stringify(data, null, 2);
+                const finalResponse = {
+                    processed: results.length,
+                    results: results
+                };
+
+                responseJson.textContent = JSON.stringify(finalResponse, null, 2);
                 responseJson.innerHTML = syntaxHighlight(responseJson.textContent);
 
             } catch (err) {
-                showError(`Network error: ${err.message}`);
+                showError(`Request failed: ${err.message}`);
             } finally {
                 btn.disabled = false;
                 btn.classList.remove('loading');
@@ -161,13 +787,15 @@
         }
 
         function showError(msg) {
-            document.getElementById('errorSection').style.display = 'block';
-            document.getElementById('errorMessage').textContent = msg;
+            const errorSection = document.getElementById('errorSection');
+            const errorMessage = document.getElementById('errorMessage');
+            errorSection.style.display = 'block';
+            errorMessage.textContent = msg;
         }
 
         function syntaxHighlight(json) {
-            return json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                .replace(/"([^"]+)":/g, '<span class="key">"$1"</span>:')
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/"([^"]+)":/g, '<span class="key">"$1"</span>:')
                 .replace(/: "([^"]+)"/g, ': <span class="string">"$1"</span>')
                 .replace(/: (\d+\.?\d*)/g, ': <span class="number">$1</span>')
                 .replace(/: (true|false)/g, ': <span class="boolean">$1</span>')
@@ -175,4 +803,5 @@
         }
     </script>
 </body>
+
 </html>
